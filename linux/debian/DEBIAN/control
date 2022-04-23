@@ -1,0 +1,9 @@
+Package: fctocf
+Version: 1.0.0
+Section: Utilities
+Priority: optional
+Architecture: amd64
+Essential: no
+Installed-Size: 192
+Maintainer: https://github.com/Lateralus138/fctocf
+Description: Convert Fahrenheit to Celsius and vice versa 

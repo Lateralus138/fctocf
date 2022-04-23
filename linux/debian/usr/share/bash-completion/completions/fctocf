@@ -1,0 +1,10 @@
+fctocf_list=(
+  -h --help
+  -c --celsius
+  -f --fahrenheit
+  -s --showtype
+  -t --temp
+  -p --precision
+)
+complete -W "$(printf '%s\n' "${fctocf_list[@]}")" fctocf
+

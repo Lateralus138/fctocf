@@ -1,0 +1,73 @@
+name: Linux Build
+
+on:
+  workflow_run:
+    workflows:
+      - Windows Build
+    types:
+      - completed
+
+jobs:
+  build_linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Make Linux
+      run: |
+        cd linux || exit 1
+        make buildlibslinux releasedynamicall || exit 2
+        chmod 755 ./release/dynamic/fctocf || exit 3
+        fctocf_linux_md5_text='{\n\t"schemaVersion": 1,\n\t"color": "2E9778",\n\t"label": "fctocf MD5",\n\t"message": "PLACEHOLDER",\n\t"labelColor": "1d1d1d",\n\t"style": "for-the-badge",\n\t"namedLogo": "linux"\n}'
+        if ! [[ -d "../docs/json" ]]; then
+          mkdir -p ../docs/json || exit 4
+        fi
+        if ! [[ -f "../docs/json/fctocf_linux_md5.json" ]]; then
+          touch ../docs/json/fctocf_linux_md5.json || exit 5
+        fi
+        echo -e "$fctocf_linux_md5_text" > ../docs/json/fctocf_linux_md5.json
+        sed -i "s/\"message\": \".*\"/\"message\": \"$(md5sum ./release/dynamic/fctocf | cut -d' ' -f 1)\"/g" ../docs/json/fctocf_linux_md5.json
+        cp -f ./release/dynamic/fctocf ./debian/usr/bin/ || exit 6
+        [[ -f "./debian/usr/bin/nomedia" ]] &&
+        rm -f "./debian/usr/bin/nomedia" || exit 7
+        dpkg-deb --build debian ./release/fctocf.deb || exit 8
+        fctocf_debian_md5_text='{\n\t"schemaVersion": 1,\n\t"color": "2E9778",\n\t"label": "fctocf.deb MD5",\n\t"message": "PLACEHOLDER",\n\t"labelColor": "1d1d1d",\n\t"style": "for-the-badge",\n\t"namedLogo": "debian"\n}'
+        if ! [[ -f "../docs/json/fctocf_debian_md5.json" ]]; then
+          touch ../docs/json/fctocf_debian_md5.json  || exit 9
+        fi
+        echo -e "$fctocf_debian_md5_text" > ../docs/json/fctocf_debian_md5.json  || exit 10
+        sed -i "s/\"message\": \".*\"/\"message\": \"$(md5sum ./release/fctocf.deb | cut -d' ' -f 1)\"/g" ../docs/json/fctocf_debian_md5.json  || exit 11
+        sudo apt update  || exit 12
+        sudo apt install g++-arm-linux-gnueabihf g++-aarch64-linux-gnu -y  || exit 13
+        make buildlibsandroidarm32
+        arm-linux-gnueabihf-g++ -static -march=armv8.5-a -O3 -std=c++17 src/android/fctocf.cpp -o fctocf.arm32 -Lsrc/lib -lfctocf  || exit 14
+        make buildlibsandroidaarch64
+        aarch64-linux-gnu-g++ -static -march=armv8.5-a -O3 -std=c++17 src/android/fctocf.cpp -o fctocf.aarch64 -Lsrc/lib -lfctocf || exit 15
+        fctocf_android_32_md5_text='{\n\t"schemaVersion": 1,\n\t"color": "2E9778",\n\t"label": "fctocf.arm32 MD5",\n\t"message": "PLACEHOLDER",\n\t"labelColor": "1d1d1d",\n\t"style": "for-the-badge",\n\t"namedLogo": "android"\n}'
+        fctocf_android_64_md5_text='{\n\t"schemaVersion": 1,\n\t"color": "2E9778",\n\t"label": "fctocf.aarch46 MD5",\n\t"message": "PLACEHOLDER",\n\t"labelColor": "1d1d1d",\n\t"style": "for-the-badge",\n\t"namedLogo": "android"\n}'
+        if ! [[ -f "../docs/json/fctocf_android_32_md5.json" ]]; then
+          touch ../docs/json/fctocf_android_32_md5.json || exit 16
+        fi
+        if ! [[ -f "../docs/json/fctocf_android_64_md5.json" ]]; then
+          touch ../docs/json/fctocf_android_64_md5.json || exit 17
+        fi
+        echo -e "$fctocf_android_32_md5_text" > ../docs/json/fctocf_android_32_md5.json || exit 18
+        sed -i "s/\"message\": \".*\"/\"message\": \"$(md5sum ./fctocf.arm32 | cut -d' ' -f 1)\"/g" ../docs/json/fctocf_android_32_md5.json  || exit 19
+        echo -e "$fctocf_android_64_md5_text" > ../docs/json/fctocf_android_64_md5.json || exit 20
+        sed -i "s/\"message\": \".*\"/\"message\": \"$(md5sum ./fctocf.aarch64 | cut -d' ' -f 1)\"/g" ../docs/json/fctocf_android_64_md5.json || exit 21
+    - name: Push Linux MD5
+      run: |
+        git config --global user.name "Lateralus138"
+        git config --global user.email "faithnomoread@yahoo.com"
+        git add docs/json
+        git commit -m "Uploaded MD5 - $(date)"
+        git push
+    - uses: ncipollo/release-action@v1
+      with:
+        allowUpdates: True
+        tag: 1.0.0.0
+        bodyFile: "./docs/md/release.md"
+        name: Stable Release
+        prerelease: False
+        artifacts: "./linux/release/fctocf.deb,./linux/release/dynamic/fctocf,./linux/fctocf.arm32,./linux/fctocf.aarch64"
+        token: ${{ secrets.GITHUB_TOKEN }}
